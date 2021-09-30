@@ -40,9 +40,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, default='', metavar='N',
                         help='Name of the experiment')
-    parser.add_argument('--model', type=str, default='model_seg', metavar='N',
-                        help='Model to use, [pointnet, dgcnn]')
-    parser.add_argument('--gpu_idx', type=int, default=[0,1], nargs='+', 
+    parser.add_argument('--model', type=str, default='model', metavar='N',
+                        help='Model to use')
+    parser.add_argument('--gpu_idx', type=int, default=[0,1], nargs='+',
                         help='set < 0 to use CPU')
     parser.add_argument('--k', type=int, default=20, metavar='N',
                         help='Num of nearest neighbors to use')
@@ -60,20 +60,11 @@ def main():
     parser.add_argument('--bs', type= int, default= 32, help= 'Batch size')
     parser.add_argument('--dataset', type=str, default='data/shapenetcore_partanno_segmentation_benchmark_v0_normal', help= "Path to ShapeNetPart")
     parser.add_argument('--load', help= 'Path to load model')
-    parser.add_argument('--save', type=str, default='model.pkl', help= 'Path to save model')
     parser.add_argument('--record', type=str, default='record.log', help= 'Record file name (e.g. record.log)')
     parser.add_argument('--interval', type= int, default=100, help= 'Record interval within an epoch')
+    parser.add_argument('--checkpoint_gap', type= int, default=10, help= 'Save checkpoints every n epochs')
     parser.add_argument('--point', type= int, default= 2048, help= 'Point number per object')
     parser.add_argument('--output', help= 'Folder for visualization images')
-    # Transform
-    parser.add_argument('--normal', dest= 'normal', action= 'store_true', help= 'Normalize objects (zero--mean, unit size)')
-    parser.set_defaults(normal= False)
-    parser.add_argument('--shift', type= float, help= 'Shift objects (original: 0.0)')
-    parser.add_argument('--scale', type= float, help= 'Enlarge/shrink objects (original: 1.0)')
-    parser.add_argument('--rotate', type= float, help= 'Rotate objects in degree (original: 0.0)')
-    parser.add_argument('--axis', type= int, default= 1, help= 'Rotation axis [0, 1, 2] (upward = 1)') # upward axis = 1
-    parser.add_argument('--random', dest= 'random', action= 'store_true', help= 'Randomly transform in a given range')
-    parser.set_defaults(random= False)
     args = parser.parse_args()
 
     if args.name == '':
@@ -81,9 +72,14 @@ def main():
 
     config = PartSegConfig()
 
+    # Create Network
     MODEL = import_module(args.model)
     model = MODEL.Net(args=args, class_num=50, cat_num=16)
     manager = Manager(model, args)
+
+    ################
+    # Start Training
+    ################
 
     if args.mode == "train":
         print("Training ...")
@@ -104,13 +100,18 @@ def main():
 
 class Manager():
     def __init__(self, model, args):
+
+        ############
+        # Parameters
+        ############
+
         self.args_info = args.__str__()
         self.device = torch.device('cpu' if len(args.gpu_idx) == 0 else 'cuda:{}'.format(args.gpu_idx[0]))
-        if args.load:
-            model.load_state_dict(torch.load(args.load))
         self.model = model.to(self.device)
         self.model = nn.DataParallel(self.model, device_ids=args.gpu_idx)
         print('Now use {} GPUs: {}'.format(len(args.gpu_idx), args.gpu_idx))
+        if args.load:
+            self.model.load_state_dict(torch.load(args.load))
         
         self.epoch = args.epoch
         self.Tmax = args.Tmax
@@ -118,20 +119,15 @@ class Manager():
         self.lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=args.Tmax, eta_min=args.lr)
         self.loss_function = nn.CrossEntropyLoss()
 
-        self.save = os.path.join('models', args.name, args.save)
-        if not os.path.exists(os.path.join('models', args.name)):
-            os.makedirs(os.path.join('models', args.name))
+        self.save = os.path.join('models', args.name, 'checkpoints')
+        if not os.path.exists(self.save):
+            os.makedirs(self.save)
         self.record_interval = args.interval
         self.record_file = None
         if args.record:
             self.record_file = open(os.path.join('models', args.name, args.record), 'w')
-        
+        self.checkpoint_gap = args.checkpoint_gap
         self.out_dir = args.output
-        self.best = {"c_miou": 0, "i_miou": 0}
-
-    def update_best(self, c_miou, i_miou):
-        self.best["c_miou"] = max(self.best["c_miou"], c_miou)
-        self.best["i_miou"] = max(self.best["i_miou"], i_miou)
 
     def record(self, info):
         print(info)
@@ -194,6 +190,7 @@ class Manager():
                 pred = torch.max(out, 2)[1]
                 self.calculate_save_mious(train_iou_table, cat_name, labels, pred)
 
+                # record within epoch
                 if self.record_interval and ((i + 1) % self.record_interval == 0):
                     c_miou = train_iou_table.get_mean_category_miou()
                     i_miou = train_iou_table.get_mean_instance_miou()
@@ -208,16 +205,20 @@ class Manager():
                 for group in self.optimizer.param_groups:
                     group['lr'] = 0.0001
 
+            # save checkpoints
             if self.save:
-                torch.save(self.model.state_dict(), self.save)
+                torch.save(self.model.state_dict(), os.path.join(self.save, 'model.pkl'))
+                # Save checkpoints occasionally
+                if (epoch+1) % self.checkpoint_gap == 0:
+                    torch.save(self.model.state_dict(), os.path.join(self.save, 'epoch_{:03d}.pkl'.format(epoch)))
 
+            # Record IoU
             self.record("==== Epoch {:3} ====".format(epoch + 1))
-            self.record("lr = {}".format(learning_rate))
             self.record("Training mIoU:")
             self.record(train_table_str)
             self.record("Testing mIoU:")
             self.record(test_table_str)
-            self.record("* Best mIoU(c): {:.3f}, Best mIoU (i): {:.3f} \n".format(self.best["c_miou"], self.best["i_miou"]))
+
 
     def test(self, test_data, out_dir= None):
         if out_dir: 
@@ -246,7 +247,6 @@ class Manager():
         test_loss /= (i+1) 
         c_miou = test_iou_table.get_mean_category_miou()
         i_miou = test_iou_table.get_mean_instance_miou()
-        self.update_best(c_miou, i_miou)
         test_table_str = test_iou_table.get_string()
 
         if out_dir:

@@ -222,6 +222,37 @@ class ShapeNetDataset():
         onehot = torch.zeros(len(self.cat))
         onehot[cat_id] = 1
         return onehot
+
+    def load_original_data(self, index):
+        fn = self.datapath[index]
+        cat = self.datapath[index][0] # cat name
+        cls = self.classes[cat] # cat index
+        cls = np.array([cls]).astype(np.int64)
+        data = np.loadtxt(fn[1]).astype(np.float32)
+        point_set = data[:,0:3]
+        if self.normalize:
+            point_set = self.pc_normalize(point_set)
+        normal = data[:,3:6]
+        seg = data[:,-1].astype(np.int64)
+        point_set = np.concatenate((point_set, normal), axis=1)
+
+        # onehot and mask
+        onehot = self.get_catgory_onehot(cls)
+        mask = torch.zeros(TOTAL_PARTS_NUM)
+        mask[self.seg_classes[cat]] = 1
+        mask = mask.unsqueeze(0).repeat(point_set.shape[0], 1)
+
+        # repeat to 1024 at least
+        ori_point_num = point_set.shape[0]
+        if point_set.shape[0] < 640:
+            cur_len = point_set.shape[0]
+            res = np.array(point_set)
+            while cur_len < 640:
+                res = np.concatenate((res, point_set))
+                cur_len += point_set.shape[0]
+            point_set = res[:640, :]
+
+        return cat, point_set, seg, onehot, mask, ori_point_num
         
     def __len__(self):
         return len(self.datapath)

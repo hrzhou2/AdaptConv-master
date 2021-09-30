@@ -136,16 +136,6 @@ class PartSegConfig():
     # Dataset parameters
     ####################
 
-
-    # Augmentations (S3DIS)
-    '''augment_scale_anisotropic = True
-    augment_symmetries = [True, False, False]
-    augment_rotation = 'vertical'
-    augment_scale_min = 0.8
-    augment_scale_max = 1.2
-    augment_noise = 0.001
-    augment_color = 0.8'''
-
     # Augmentations (PartSeg)
     augment_scale_anisotropic = True
     augment_symmetries = [False, False, False]

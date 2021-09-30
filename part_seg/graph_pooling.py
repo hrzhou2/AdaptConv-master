@@ -138,7 +138,9 @@ def farthest_point_sample(xyz, npoint):
         farthest = torch.max(distance, -1)[1]
     return centroids
 
-# ***********************Pooling Layer***********************
+#####################
+# Graph Pooling Layer
+#####################
 
 class Pooling_fps(nn.Module):
     def __init__(self, pooling_rate, neighbor_num):
@@ -167,70 +169,3 @@ class Pooling_fps(nn.Module):
 
         return vertices_pool, feature_map_pool
 
-class Pooling_strided(nn.Module):
-    def __init__(self, pooling_rate, neighbor_num, in_channels):
-        super().__init__()
-        self.pooling_rate = pooling_rate
-        self.neighbor_num = neighbor_num
-        self.conv_layer = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(in_channels),
-            nn.LeakyReLU(negative_slope=0.2))
-
-
-    def forward(self, 
-                vertices: "(bs, 3, vertice_num)",
-                feature_map: "(bs, channel_num, vertice_num)",
-                idx):
-        """
-        Return:
-            vertices_pool: (bs, 3, pool_vertice_num),
-            x: (bs, new_npoints, num_dims)
-        """
-
-        bs, _, vertice_num = vertices.size()
-        neighbor_feature, _ = get_graph_feature(feature_map, k=self.neighbor_num, idx=idx) # (bs, num_dims, num_points, k)
-        #neighbor_feature = neighbor_feature.permute(0,2,1,3) # (bs, num_points, num_dims, k)
-        #pooled_feature = torch.max(neighbor_feature, dim=-1)[0] #(bs, num_dims, num_points)
-
-        # downsample
-        new_npoints = int(vertice_num / self.pooling_rate)
-        new_points_idx = farthest_point_sample(vertices, new_npoints) #(bs, new_npoints)
-        x = index_feature(neighbor_feature, new_points_idx) # (bs, num_dims, new_npoints, k)
-        vertices_pool = index_points(vertices, new_points_idx) # (bs, 3, new_npoints)
-
-        x = self.conv_layer(x)
-        x = x.max(dim=-1, keepdim=False)[0] # (bs, num_dims, new_npoints)
-
-        return vertices_pool, x
-
-def test():
-    import time
-    bs = 8
-    v = 1024
-    dim = 6
-    n = 20
-    device='cuda:0'
-
-    pool = Pool_layer(pooling_rate= 4, neighbor_num= 20).to(device)
-
-    points = torch.randn(bs, 3, v).to(device)
-    x = torch.randn(bs, dim, v).to(device)
-    _, neighbor_idx = get_graph_feature(points, k=20)
-    print('points: {}, x: {}, neighbor_idx: {}'.format(points.size(), x.size(), neighbor_idx.size()))
-
-    points1, x1 = pool(points, x, neighbor_idx)
-    print('points1: {}, x1: {}'.format(points1.size(), x1.size()))
-
-    nearest_pool_1 = get_nearest_index(points, points1)
-    print('nearest_pool_1: {}'.format(nearest_pool_1.size()))
-    print(nearest_pool_1.device)
-
-    x2 = indexing_neighbor(x1, nearest_pool_1).squeeze(3)
-    print('x2: {}'.format(x2.size()))
-    print(x2.device)
-
-
-
-if __name__ == "__main__":
-    test()

@@ -1,13 +1,11 @@
 import os
 import sys
-sys.path.append('../')
 from util import *
 import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from ShapeNetPart import get_valid_labels
-from visualize import visualize
+
 
 def get_miou(pred: "tensor (point_num, )", target: "tensor (point_num, )", valid_labels: list):
     pred, target = pred.cpu().numpy(), target.cpu().numpy()
@@ -75,3 +73,8 @@ class IouTable():
         string = first_row + "\n" + second_row
         return string 
 
+def test():
+    pass
+
+if __name__ == "__main__":
+    test()
