@@ -1,8 +1,19 @@
 # Adaptive Graph Convolution for Point Cloud Analysis
 
+![example](./picture/kernel.png)
+
 This repository contains the implementation of **AdaptConv** for point cloud analysis.
 
-Adaptive Graph Convolution (AdaptConv) is a point cloud convolution operator presented in our ICCV2021 paper. If you find our work useful in your research, please cite our paper.
+Adaptive Graph Convolution (AdaptConv) is a point cloud convolution operator presented in our ICCV2021 [paper](https://arxiv.org/abs/2108.08035). If you find our work useful in your research, please cite our paper.
+
+preprint:
+
+    @article{zhou2021adaptive,
+      title={Adaptive Graph Convolution for Point Cloud Analysis},
+      author={Zhou, Haoran and Feng, Yidan and Fang, Mingsheng and Wei, Mingqiang and Qin, Jing and Lu, Tong},
+      journal={arXiv preprint arXiv:2108.08035},
+      year={2021}
+    }
 
 ## Installation
 
@@ -25,5 +36,10 @@ Adaptive Graph Convolution (AdaptConv) is a point cloud convolution operator pre
 
 ## Indoor Segmentation
 
-coming soon
+[sem_segmentation.md](./sem_seg/sem_segmentation.md)
+
+
+### Updates
+* 09/30/2021: Updated code for part segmentation.
+* 09/30/2021: Added code for S3DIS indoor segmentation.
 
