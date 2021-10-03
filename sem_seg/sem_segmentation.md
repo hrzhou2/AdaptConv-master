@@ -5,8 +5,13 @@
 The S3DIS dataset can be downloaded <a href="https://goo.gl/forms/4SoGp4KtH1jfRqEj2">here (4.8 GB)</a>. 
 Download the file named `Stanford3dDataset_v1.2.zip`, and move it to `data/Stanford3dDataset_v1.2`. You may also specific your own data directory by changing the `path` argument in `train.py`.
 
+Compile the C++ extension modules for python located in `cpp_wrappers`. Open a terminal in this folder, and run:
+
+    sh compile_wrappers.sh
+
 * The code has been tested on one configuration:
     - PyTorch 1.8.1, CUDA 10.1
+
 
 ### Training
 
