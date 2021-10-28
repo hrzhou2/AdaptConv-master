@@ -15,7 +15,7 @@ Compile the C++ extension modules for python located in `cpp_wrappers`. Open a t
 
 ### Training
 
-We train the network on a Tesla V100 gpu (to maintain the batch size). It will take a few more time in the first training. Simply run:
+We train the network on a Tesla V100 gpu (to maintain the batch size). It will take a few more time in the first training. The pretrained model can be found <a href="https://drive.google.com/drive/folders/1sgHGhijhEqOe3jdAz2HyJVNlvq5zy5mf?usp=sharing">here</a>. Simply run:
 
     python train.py
 

@@ -33,7 +33,7 @@ parser.add_argument('--name', type=str, default='', help='Test name')
 parser.add_argument('--gpu_idx', type=int, default=0, help='set < 0 to use CPU')
 parser.add_argument('--log', type=str, default='', help='Path to model.')
 parser.add_argument('--model', type=str, default='', help='Chosen model.')
-parser.add_argument('--dataset', type=str, default='/home/data4/zhr/S3DIS/data/Stanford3dDataset_v1.2/', help='Path to S3DIS.')
+parser.add_argument('--dataset', type=str, default='./data/Stanford3dDataset_v1.2/', help='Path to S3DIS.')
 
 args = parser.parse_args()
 
